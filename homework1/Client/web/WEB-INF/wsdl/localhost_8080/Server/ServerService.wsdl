@@ -11,30 +11,30 @@
 <message name="registerResponse">
 <part name="parameters" element="tns:registerResponse"/>
 </message>
-<message name="storeMeasurement">
-<part name="parameters" element="tns:storeMeasurement"/>
-</message>
-<message name="storeMeasurementResponse">
-<part name="parameters" element="tns:storeMeasurementResponse"/>
-</message>
 <message name="searchNeighbour">
 <part name="parameters" element="tns:searchNeighbour"/>
 </message>
 <message name="searchNeighbourResponse">
 <part name="parameters" element="tns:searchNeighbourResponse"/>
 </message>
+<message name="storeMeasurement">
+<part name="parameters" element="tns:storeMeasurement"/>
+</message>
+<message name="storeMeasurementResponse">
+<part name="parameters" element="tns:storeMeasurementResponse"/>
+</message>
 <portType name="ServerService">
 <operation name="register">
 <input wsam:Action="hw1/ServerService/registerRequest" message="tns:register"/>
 <output wsam:Action="hw1/ServerService/registerResponse" message="tns:registerResponse"/>
 </operation>
-<operation name="storeMeasurement">
-<input wsam:Action="hw1/ServerService/storeMeasurementRequest" message="tns:storeMeasurement"/>
-<output wsam:Action="hw1/ServerService/storeMeasurementResponse" message="tns:storeMeasurementResponse"/>
-</operation>
 <operation name="searchNeighbour">
 <input wsam:Action="hw1/ServerService/searchNeighbourRequest" message="tns:searchNeighbour"/>
 <output wsam:Action="hw1/ServerService/searchNeighbourResponse" message="tns:searchNeighbourResponse"/>
+</operation>
+<operation name="storeMeasurement">
+<input wsam:Action="hw1/ServerService/storeMeasurementRequest" message="tns:storeMeasurement"/>
+<output wsam:Action="hw1/ServerService/storeMeasurementResponse" message="tns:storeMeasurementResponse"/>
 </operation>
 </portType>
 <binding name="ServerPortBinding" type="tns:ServerService">
@@ -48,7 +48,7 @@
 <soap:body use="literal"/>
 </output>
 </operation>
-<operation name="storeMeasurement">
+<operation name="searchNeighbour">
 <soap:operation soapAction=""/>
 <input>
 <soap:body use="literal"/>
@@ -57,7 +57,7 @@
 <soap:body use="literal"/>
 </output>
 </operation>
-<operation name="searchNeighbour">
+<operation name="storeMeasurement">
 <soap:operation soapAction=""/>
 <input>
 <soap:body use="literal"/>
