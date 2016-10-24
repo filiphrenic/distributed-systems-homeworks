@@ -9,13 +9,13 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
-import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+import javax.xml.ws.WebServiceException;
 
 /**
  * Created by fhrenic on 20/10/2016.
@@ -33,21 +33,31 @@ public class Sensor {
     private AtomicBoolean running;
     private AtomicBoolean listening;
 
+    public static void main(String[] args) {
+        new Sensor();
+    }
+
     public Sensor() throws IllegalStateException {
         startSeconds = Util.currentTimeSeconds();
         readMeasurements();
 
         int numberOfAttempts = 5;
         for (int i = 0; i < numberOfAttempts; i++) {
-            username = ""; // get username from somewhere
-            if (Server.register(
-                    username,
-                    Util.randomLatitude(), Util.randomLongitude(),
-                    Util.getLocalIP(), PORT
-            )) {
-                break;
+            username = ""; // TODO get username from somewhere
+
+            try {
+                if (Server.register(
+                        username,
+                        Util.randomLatitude(), Util.randomLongitude(),
+                        Util.getLocalIP(), PORT
+                )) {
+                    break;
+                }
+                username = null;
+
+            } catch (WebServiceException e) {
+                throw new IllegalStateException("Couldn't connect to web service", e);
             }
-            username = null;
         }
         if (username == null) {
             throw new IllegalStateException(
@@ -95,52 +105,6 @@ public class Sensor {
         return running.compareAndSet(true, false);
     }
 
-    public void getAndSend() throws RemoteException {
-        String myMeasurements = getRandomMeasurement();
-        UserAddress closest = Server.searchNeighbour(username);
-
-        try (Socket sensorSocket = new Socket(closest.getIpaddress(), closest.getPort())) {
-
-            BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(sensorSocket.getInputStream(), StandardCharsets.UTF_8)
-            );
-            BufferedWriter writer = new BufferedWriter(
-                    new OutputStreamWriter(sensorSocket.getOutputStream(), StandardCharsets.UTF_8)
-            );
-
-//			while (true) { // TODO change condition
-            writer.write("GET");
-            String measurement = reader.readLine();
-            prepareAndSend(measurement);
-//			}
-            writer.write("QUIT");
-
-        } catch (IOException e) {
-            Util.except(e);
-        }
-    }
-
-    private void prepareAndSend(String neighbourMeasurements) throws RemoteException {
-        List<Float> my = Util.stringToFloats(getRandomMeasurement());
-        List<Float> his = Util.stringToFloats(neighbourMeasurements);
-
-        int size = Math.min(my.size(), his.size());
-        size = Math.min(size, header.length);
-
-        for (int i = 0; i < size; i++) {
-            float average = my.get(i);
-            if (average == 0.0f) {
-                continue;
-            }
-            float m_his = his.get(i);
-            if (m_his != 0) {
-                average = (average + m_his) / 2.0f;
-            }
-
-            Server.storeMeasurement(username, header[i], average);
-        }
-    }
-
     /**
      * Listens to incoming connections and handles them
      */
@@ -162,8 +126,7 @@ public class Sensor {
                 while (Sensor.this.running.get()) {
                     try {
                         Socket clientSocket = serverSocket.accept();
-                        Runnable worker = new MeasurementProvider(clientSocket);
-                        executor.execute(worker);
+                        executor.execute(new MeasurementProvider(clientSocket));
                     } catch (SocketTimeoutException ste) {
                         // do nothing, check runningFlag flag
                     } catch (IOException e) {
@@ -186,7 +149,7 @@ public class Sensor {
      */
     private class MeasurementProvider implements Runnable {
 
-        private Socket client;
+        private final Socket client;
 
         MeasurementProvider(Socket client) {
             this.client = client;
@@ -194,7 +157,33 @@ public class Sensor {
 
         @Override
         public void run() {
-            // TODO
+            try (
+                    BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(client.getInputStream(), StandardCharsets.UTF_8)
+                    );
+                    BufferedWriter writer = new BufferedWriter(
+                            new OutputStreamWriter(client.getOutputStream(), StandardCharsets.UTF_8)
+                    );) {
+
+                while (Sensor.this.listening.get()) {
+                    String request = reader.readLine();
+                    if ("GET".equalsIgnoreCase(request)) {
+                        writer.write(Sensor.this.getRandomMeasurement());
+                    } else if ("QUIT".equalsIgnoreCase(request)) {
+                        break;
+                    }
+                }
+
+            } catch (Exception e) {
+
+            } finally {
+                try {
+                    client.close();
+                } catch (IOException e) {
+                    // ignore
+                }
+            }
+
         }
 
     }
@@ -206,7 +195,51 @@ public class Sensor {
 
         @Override
         public void run() {
-            // TODO
+
+            UserAddress closest = Server.searchNeighbour(Sensor.this.username);
+
+            try (Socket sensorSocket = new Socket(closest.getIpaddress(), closest.getPort())) {
+
+                BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(sensorSocket.getInputStream(), StandardCharsets.UTF_8)
+                );
+                BufferedWriter writer = new BufferedWriter(
+                        new OutputStreamWriter(sensorSocket.getOutputStream(), StandardCharsets.UTF_8)
+                );
+
+                while (Sensor.this.running.get()) {
+                    String myMeasurements = Sensor.this.getRandomMeasurement();
+                    writer.write("GET");
+                    String measurements = reader.readLine();
+                    sendToServer(myMeasurements, measurements);
+                }
+
+                writer.write("QUIT");
+
+            } catch (IOException e) {
+                Util.except(e);
+            }
+        }
+
+        private void sendToServer(String m1, String m2) {
+            List<Float> my = Util.stringToFloats(m1);
+            List<Float> his = Util.stringToFloats(m2);
+
+            int size = Math.min(my.size(), his.size());
+            size = Math.min(size, Sensor.this.header.length);
+
+            for (int i = 0; i < size; i++) {
+                float average = my.get(i);
+                if (average == 0.0f) {
+                    continue;
+                }
+                float m_his = his.get(i);
+                if (m_his != 0) {
+                    average = (average + m_his) / 2.0f;
+                }
+
+                Server.storeMeasurement(Sensor.this.username, Sensor.this.header[i], average);
+            }
         }
 
     }
