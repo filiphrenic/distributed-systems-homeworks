@@ -1,10 +1,9 @@
 package hw1;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
@@ -13,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import javax.xml.ws.WebServiceException;
@@ -22,10 +22,11 @@ import javax.xml.ws.WebServiceException;
  */
 public class Sensor {
 
-    private static final int PORT = 55555;
+    private static int ID = 0;
+    private static final int PORT = 20000;
     private static final String MEASUREMENTS_FILENAME = "mjerenja.csv";
 
-    private String username;
+    private int id;
     private final long startSeconds;
     private String[] header;
     private List<String> measurements;
@@ -33,42 +34,63 @@ public class Sensor {
     private AtomicBoolean running;
     private AtomicBoolean listening;
 
-    public static void main(String[] args) {
-        new Sensor();
+    public static void main(String[] args) throws IOException, InterruptedException {
+        Sensor s1 = new Sensor();
+        s1.listen();
+        Sensor s2 = new Sensor();
+        TimeUnit.SECONDS.sleep(4);
+        s2.run();
+
+//        s1.stopListening();
+//        s2.stopRunning();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        System.out.println(reader.readLine());
     }
 
     public Sensor() throws IllegalStateException {
+        Util.debug("Creating sensor...");
         startSeconds = Util.currentTimeSeconds();
         readMeasurements();
+        Util.debug("Read measurements");
 
         int numberOfAttempts = 5;
         for (int i = 0; i < numberOfAttempts; i++) {
-            username = ""; // TODO get username from somewhere
+            id = ++Sensor.ID;
 
             try {
                 if (Server.register(
-                        username,
+                        getUsername(),
                         Util.randomLatitude(), Util.randomLongitude(),
-                        Util.getLocalIP(), PORT
+                        Util.getLocalIP(), getPort()
                 )) {
                     break;
                 }
-                username = null;
+                id = -1;
 
             } catch (WebServiceException e) {
                 throw new IllegalStateException("Couldn't connect to web service", e);
             }
         }
-        if (username == null) {
+        if (id == -1) {
             throw new IllegalStateException(
                     String.format("Couldn't register to server in %d attempts", numberOfAttempts)
             );
         }
 
+        Util.debug("%s registered", getUsername());
+
+        running = new AtomicBoolean(false);
+        listening = new AtomicBoolean(false);
+
+        Util.debug("Successfully created sensor %s", getUsername());
     }
 
-    public String getUsername() {
-        return username;
+    public final String getUsername() {
+        return "sensor" + id;
+    }
+
+    public final int getPort() {
+        return PORT + id;
     }
 
     public boolean isListening() {
@@ -77,14 +99,17 @@ public class Sensor {
 
     public boolean listen() {
         if (listening.get()) {
+            Util.debug("%s already listening", getUsername());
             return false;
         }
         listening.set(true);
         new Thread(this.new Listener()).start();
+        Util.debug("%s started listening", getUsername());
         return true;
     }
 
     public boolean stopListening() {
+        Util.debug("%s stop listening", getUsername());
         return listening.compareAndSet(true, false);
     }
 
@@ -94,15 +119,26 @@ public class Sensor {
 
     public boolean run() {
         if (running.get()) {
+            Util.debug("%s already running", getUsername());
             return false;
         }
         running.set(true);
         new Thread(this.new MeasurementRequester()).start();
+        Util.debug("%s started running", getUsername());
         return true;
     }
 
     public boolean stopRunning() {
+        Util.debug("%s stop running", getUsername());
         return running.compareAndSet(true, false);
+    }
+
+    private void log(String s) {
+        System.out.println(s);
+    }
+
+    private void log(String fmt, Object... args) {
+        log(String.format(fmt, args));
     }
 
     /**
@@ -118,17 +154,27 @@ public class Sensor {
 
         @Override
         public void run() {
-            try (ServerSocket serverSocket = new ServerSocket(Sensor.PORT);) {
 
-                // set timeout to avoid blocking
-                serverSocket.setSoTimeout(500);
+            int port = getPort();
 
-                while (Sensor.this.running.get()) {
+            try (ServerSocket serverSocket = new ServerSocket(port);) {
+
+                // set timeout to check if sensor is still listening
+                serverSocket.setSoTimeout(5000);
+
+                Util.debug("%s listening on port %d", getUsername(), port);
+
+                while (Sensor.this.listening.get()) {
+                    Util.debug("%s waiting for client", getUsername());
                     try {
                         Socket clientSocket = serverSocket.accept();
+                        Util.debug("%s => client connected", getUsername());
                         executor.execute(new MeasurementProvider(clientSocket));
                     } catch (SocketTimeoutException ste) {
-                        // do nothing, check runningFlag flag
+                        Util.except(ste);
+                        if (!Sensor.this.listening.get()) {
+                            break;
+                        }
                     } catch (IOException e) {
                         Util.except(e);
                         break;
@@ -138,8 +184,11 @@ public class Sensor {
             } catch (IOException e) {
                 Util.except(e);
             } finally {
+                Util.debug("Closing listeners");
                 executor.shutdown();
             }
+
+            Sensor.this.listening.set(false); // just to be sure (in case of exceptions)
         }
 
     }
@@ -153,29 +202,37 @@ public class Sensor {
 
         MeasurementProvider(Socket client) {
             this.client = client;
+            Util.debug("Created measurement provider for %s", getUsername());
         }
 
         @Override
         public void run() {
+
             try (
                     BufferedReader reader = new BufferedReader(
                             new InputStreamReader(client.getInputStream(), StandardCharsets.UTF_8)
                     );
-                    BufferedWriter writer = new BufferedWriter(
-                            new OutputStreamWriter(client.getOutputStream(), StandardCharsets.UTF_8)
-                    );) {
+                    PrintWriter writer = new PrintWriter(client.getOutputStream(), true);) {
 
                 while (Sensor.this.listening.get()) {
+
                     String request = reader.readLine();
+
+                    Util.debug("%s recieved <%s>", getUsername(), request);
                     if ("GET".equalsIgnoreCase(request)) {
-                        writer.write(Sensor.this.getRandomMeasurement());
+                        String measurement = Sensor.this.getRandomMeasurement();
+                        Util.debug("Sending measurements %s", measurement);
+                        writer.println(measurement);
                     } else if ("QUIT".equalsIgnoreCase(request)) {
+                        Util.debug("%s recieved quit");
+                        break;
+                    } else {
                         break;
                     }
                 }
 
             } catch (Exception e) {
-
+                Util.except(e);
             } finally {
                 try {
                     client.close();
@@ -183,6 +240,9 @@ public class Sensor {
                     // ignore
                 }
             }
+
+            Util.debug("%s quit providing measurements", getUsername());
+            log("%s quit providing measurements", getUsername());
 
         }
 
@@ -196,31 +256,63 @@ public class Sensor {
         @Override
         public void run() {
 
-            UserAddress closest = Server.searchNeighbour(Sensor.this.username);
+            String username = getUsername();
+            UserAddress closest = Server.searchNeighbour(username);
+
+            if (closest == null) {
+                Util.debug("There is no sensor close to %s", username);
+                return;
+            }
+
+            Util.debug("%s found closest sensor at %s:%d", username, closest.ipaddress, closest.port);
 
             try (Socket sensorSocket = new Socket(closest.getIpaddress(), closest.getPort())) {
 
                 BufferedReader reader = new BufferedReader(
                         new InputStreamReader(sensorSocket.getInputStream(), StandardCharsets.UTF_8)
                 );
-                BufferedWriter writer = new BufferedWriter(
-                        new OutputStreamWriter(sensorSocket.getOutputStream(), StandardCharsets.UTF_8)
-                );
+                PrintWriter writer = new PrintWriter(sensorSocket.getOutputStream(), true);
 
                 while (Sensor.this.running.get()) {
+
+                    Util.debug("%s getting measurements...");
                     String myMeasurements = Sensor.this.getRandomMeasurement();
-                    writer.write("GET");
+
+                    Util.debug("%s requesting measurements from peer", getUsername());
+                    writer.println("GET");
+
                     String measurements = reader.readLine();
+                    if (measurements == null) {
+                        break;
+                    }
+                    measurements = measurements.trim();
+
+                    Util.debug("%s sending measurements to server", getUsername());
                     sendToServer(myMeasurements, measurements);
+
+                    try {
+                        TimeUnit.SECONDS.sleep(2);
+                    } catch (InterruptedException e) {
+                        // ignore
+                    }
                 }
 
-                writer.write("QUIT");
+                Util.debug("%s sending QUIT to peer sensor", getUsername());
+                writer.println("QUIT");
 
             } catch (IOException e) {
                 Util.except(e);
             }
+
+            Sensor.this.running.set(false); // just to be sure (in case of exceptions)
         }
 
+        /**
+         * Calculate averages and send measurements to server
+         *
+         * @param m1 measurements as string
+         * @param m2 measurements as string
+         */
         private void sendToServer(String m1, String m2) {
             List<Float> my = Util.stringToFloats(m1);
             List<Float> his = Util.stringToFloats(m2);
@@ -238,13 +330,31 @@ public class Sensor {
                     average = (average + m_his) / 2.0f;
                 }
 
-                Server.storeMeasurement(Sensor.this.username, Sensor.this.header[i], average);
+                if (Server.storeMeasurement(getUsername(), Sensor.this.header[i], average)) {
+                    Util.debug("Successfully stored measurements from %s", getUsername());
+                } else {
+                    Util.debug("Failed storing measurements from %s", getUsername());
+                }
             }
         }
 
     }
 
     // MISC
+    private long activeSeconds() {
+        return Util.currentTimeSeconds() - startSeconds;
+    }
+
+    private String getRandomMeasurement() {
+        long seconds = activeSeconds();
+        long index = seconds % measurements.size();
+        String measurement = measurements.get((int) index);
+
+        log("%s@%d getting measurements [%s] at index %d", getUsername(), seconds, measurement, index);
+
+        return measurement;
+    }
+
     private void readMeasurements() {
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(
@@ -257,15 +367,6 @@ public class Sensor {
             Util.except(e);
             System.exit(1);
         }
-    }
-
-    private long activeSeconds() {
-        return Util.currentTimeSeconds() - startSeconds;
-    }
-
-    private String getRandomMeasurement() {
-        long index = activeSeconds() % 100;
-        return measurements.get((int) index);
     }
 
 }
