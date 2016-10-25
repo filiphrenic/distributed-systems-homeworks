@@ -70,7 +70,7 @@ public class ServerService {
             return null;
         }
 
-        writeToLog("Closest sensor to %s is %.2lf away", username, sensor.distanceTo(neighbor));
+        writeToLog("Closest sensor to %s is %.2f away", username, sensor.distanceTo(neighbor));
 
         return neighbor.getAddress();
     }
@@ -99,8 +99,8 @@ public class ServerService {
         return true;
     }
 
-    private void writeToLog(String fmt, Object... objects) {
-        writeToLog(String.format(fmt, objects));
+    private void writeToLog(String fmt, Object... args) {
+        writeToLog(String.format(fmt, args));
     }
 
     private void writeToLog(String message) {

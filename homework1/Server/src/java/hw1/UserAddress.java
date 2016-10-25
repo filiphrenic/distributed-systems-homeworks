@@ -50,16 +50,16 @@ public class UserAddress implements Serializable {
     public String getIpaddress() {
         return ipaddress;
     }
-    
-    public void setIpaddress(String ipaddress){
+
+    public void setIpaddress(String ipaddress) {
         this.ipaddress = ipaddress;
     }
 
     public int getPort() {
         return port;
     }
-    
-    public void setPort(int port){
+
+    public void setPort(int port) {
         this.port = port;
     }
 
