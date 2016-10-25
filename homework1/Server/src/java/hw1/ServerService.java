@@ -23,6 +23,8 @@ public class ServerService {
     private final Map<String, SensorInfo> sensors = new HashMap<>();
     private final Map<String, List<Measurement>> measurements = new HashMap<>();
 
+    private final List<String> log = new LinkedList<>();
+
     @WebMethod(operationName = "register")
     public boolean register(
             @WebParam(name = "username") String username,
@@ -68,6 +70,8 @@ public class ServerService {
             return null;
         }
 
+        writeToLog("Closest sensor to %s is %.2lf away", username, sensor.distanceTo(neighbor));
+
         return neighbor.getAddress();
     }
 
@@ -89,7 +93,19 @@ public class ServerService {
         list.add(newEntry);
         measurements.put(username, list);
 
+        writeToLog("Stored measurement for %s = %.2f, recieved from %s",
+                parameter, averageValue, username);
+
         return true;
+    }
+
+    private void writeToLog(String fmt, Object... objects) {
+        writeToLog(String.format(fmt, objects));
+    }
+
+    private void writeToLog(String message) {
+        log.add(message);
+        System.out.println(message);
     }
 
 }

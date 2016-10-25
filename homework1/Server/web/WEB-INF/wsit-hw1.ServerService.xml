@@ -3,19 +3,15 @@
  xmlns="http://schemas.xmlsoap.org/wsdl/" 
  xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" 
  xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
- xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" name="ServerService" targetNamespace="http://hw1/" xmlns:tns="http://hw1/" xmlns:wsp="http://www.w3.org/ns/ws-policy" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" xmlns:fi="http://java.sun.com/xml/ns/wsit/2006/09/policy/fastinfoset/service" xmlns:tcp="http://java.sun.com/xml/ns/wsit/2006/09/policy/soaptcp/service" 
+ xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" name="ServerService" targetNamespace="http://hw1/" xmlns:tns="http://hw1/" xmlns:wsp="http://www.w3.org/ns/ws-policy" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" xmlns:fi="http://java.sun.com/xml/ns/wsit/2006/09/policy/fastinfoset/service" xmlns:tcp="http://java.sun.com/xml/ns/wsit/2006/09/policy/soaptcp/service" xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702" 
  >
-    <message name="register"/>
-    <message name="registerResponse"/>
     <message name="searchNeighbour"/>
     <message name="searchNeighbourResponse"/>
     <message name="storeMeasurement"/>
     <message name="storeMeasurementResponse"/>
+    <message name="register"/>
+    <message name="registerResponse"/>
     <portType name="ServerService">
-        <operation name="register">
-            <input message="tns:register"/>
-            <output message="tns:registerResponse"/>
-        </operation>
         <operation name="searchNeighbour">
             <input message="tns:searchNeighbour"/>
             <output message="tns:searchNeighbourResponse"/>
@@ -24,18 +20,22 @@
             <input message="tns:storeMeasurement"/>
             <output message="tns:storeMeasurementResponse"/>
         </operation>
+        <operation name="register">
+            <input message="tns:register"/>
+            <output message="tns:registerResponse"/>
+        </operation>
     </portType>
     <binding name="ServerServicePortBinding" type="tns:ServerService">
         <wsp:PolicyReference URI="#ServerServicePortBindingPolicy"/>
-        <operation name="register">
-            <input/>
-            <output/>
-        </operation>
         <operation name="searchNeighbour">
             <input/>
             <output/>
         </operation>
         <operation name="storeMeasurement">
+            <input/>
+            <output/>
+        </operation>
+        <operation name="register">
             <input/>
             <output/>
         </operation>
@@ -46,6 +46,30 @@
     <wsp:Policy wsu:Id="ServerServicePortBindingPolicy">
         <wsp:ExactlyOne>
             <wsp:All/>
+        </wsp:ExactlyOne>
+    </wsp:Policy>
+    <wsp:Policy wsu:Id="ServerServicePortBinding_register_Input_Policy">
+        <wsp:ExactlyOne>
+            <wsp:All>
+                <sp:EncryptedParts>
+                    <sp:Body/>
+                </sp:EncryptedParts>
+                <sp:SignedParts>
+                    <sp:Body/>
+                </sp:SignedParts>
+            </wsp:All>
+        </wsp:ExactlyOne>
+    </wsp:Policy>
+    <wsp:Policy wsu:Id="ServerServicePortBinding_register_Output_Policy">
+        <wsp:ExactlyOne>
+            <wsp:All>
+                <sp:EncryptedParts>
+                    <sp:Body/>
+                </sp:EncryptedParts>
+                <sp:SignedParts>
+                    <sp:Body/>
+                </sp:SignedParts>
+            </wsp:All>
         </wsp:ExactlyOne>
     </wsp:Policy>
 </definitions>
