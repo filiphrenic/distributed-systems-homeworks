@@ -11,6 +11,8 @@ import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NavigableMap;
+import java.util.TreeMap;
 
 /**
  *
@@ -20,47 +22,72 @@ public class Run {
 
     private static final Map<String, Sensor> SENSORS;
     private static final Map<String, Control> CONTROLS;
+    private static final NavigableMap<String, String> HELP;
 
     static {
         SENSORS = new HashMap<>();
         CONTROLS = new HashMap<>();
+        HELP = new TreeMap<>();
 
         CONTROLS.put("create", args -> {
             Sensor s = new Sensor();
             SENSORS.put(s.getUsername(), s);
+            System.err.println(s.getUsername());
             return true;
         });
+        HELP.put("create", "creates a new sensor and prints out it's name");
+
         CONTROLS.put("help", args -> {
-            CONTROLS.forEach((name, c) -> System.err.println(name));
+            HELP.forEach((name, help) -> System.err.printf("%-23s => %s%n", name, help));
             return true;
         });
-        CONTROLS.put("exit", args -> false);
+        HELP.put("help", "shows this descriptions");
+
+        CONTROLS.put("exit", args -> {
+            SENSORS.forEach((name, s) -> {
+                s.stopRunning();
+                s.stopListening();
+            });
+            return false;
+        });
+        HELP.put("exit", "stops all sensors and terminates the program");
+
         CONTROLS.put("listen", (SensorControl) (Sensor s) -> {
             s.listen();
             return true;
         });
+        HELP.put("listen <sensor>", "<sensor> starts listening for connections");
+
         CONTROLS.put("stop-listening", (SensorControl) (Sensor s) -> {
             s.stopListening();
             return true;
         });
+        HELP.put("stop-listening <sensor>", "<sensor> stops listening for connections");
+
         CONTROLS.put("run", (SensorControl) (Sensor s) -> {
             s.run();
             return true;
         });
+        HELP.put("run <sensor>", "<sensor> starts sending measurements to server");
+
         CONTROLS.put("stop-running", (SensorControl) (Sensor s) -> {
             s.stopRunning();
             return true;
         });
+        HELP.put("stop-running <sensor>", "<sensor> stops sending measurements to server");
+
     }
 
     public static void main(String[] args) {
         Run r = new Run();
 
         CONTROLS.get("help").control(null);
+        System.err.println();
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));) {
 
             while (true) {
+                System.err.print("$ ");
                 String cmd = reader.readLine();
                 if (cmd == null) {
                     break;

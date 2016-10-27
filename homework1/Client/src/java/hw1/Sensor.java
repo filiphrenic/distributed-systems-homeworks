@@ -34,19 +34,6 @@ public class Sensor {
     private AtomicBoolean running;
     private AtomicBoolean listening;
 
-    public static void main(String[] args) throws IOException, InterruptedException {
-        Sensor s1 = new Sensor();
-        s1.listen();
-        Sensor s2 = new Sensor();
-        TimeUnit.SECONDS.sleep(4);
-        s2.run();
-
-//        s1.stopListening();
-//        s2.stopRunning();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-        System.out.println(reader.readLine());
-    }
-
     public Sensor() throws IllegalStateException {
         Util.debug("Creating sensor...");
         startSeconds = Util.currentTimeSeconds();
@@ -160,7 +147,7 @@ public class Sensor {
             try (ServerSocket serverSocket = new ServerSocket(port);) {
 
                 // set timeout to check if sensor is still listening
-                serverSocket.setSoTimeout(5000);
+                serverSocket.setSoTimeout(2000);
 
                 Util.debug("%s listening on port %d", getUsername(), port);
 
