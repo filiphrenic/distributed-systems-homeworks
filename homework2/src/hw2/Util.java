@@ -7,7 +7,10 @@ import java.util.Random;
  */
 class Util {
 
+	public static final Random RANDOM = new Random();
+
 	private static EmulatedSystemClock ESC = new EmulatedSystemClock();
+
 
 	private Util() {
 	}
