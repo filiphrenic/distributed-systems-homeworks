@@ -3,7 +3,6 @@ package hw2;
 import java.io.*;
 import java.net.DatagramPacket;
 import java.net.SocketAddress;
-import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -12,21 +11,19 @@ import java.util.logging.Logger;
  */
 public class Packet implements Serializable {
 
-	private long scalarMark;
-	private long[] vectorMark;
+	private Mark mark;
 	private Payload payload;
 
-	public static Packet create(long scalarMark, long[] vectorMark, double co2) {
-		return new Packet(scalarMark, vectorMark, new Payload(co2));
+	public static Packet create(Mark mark, double co2) {
+		return new Packet(mark, new Payload(co2));
 	}
 
-	public static Packet ack(long scalarMark, long[] vectorMark) {
-		return new Packet(scalarMark, vectorMark, null);
+	public static Packet ack(Mark mark) {
+		return new Packet(mark, null);
 	}
 
-	private Packet(long scalarMark, long[] vectorMark, Payload payload) {
-		this.scalarMark = scalarMark;
-		this.vectorMark = Arrays.copyOf(vectorMark, vectorMark.length);
+	private Packet(Mark mark, Payload payload) {
+		this.mark = mark;
 		this.payload = payload;
 	}
 
@@ -60,12 +57,8 @@ public class Packet implements Serializable {
 		return null;
 	}
 
-	public long getScalarMark() {
-		return scalarMark;
-	}
-
-	public long[] getVectorMark() {
-		return vectorMark;
+	public Mark getMark() {
+		return mark;
 	}
 
 	public Payload getPayload() {
