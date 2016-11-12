@@ -3,11 +3,12 @@ package hw2;
 import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
+import java.net.SocketException;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-/**
- * Created by fhrenic on 11/11/2016.
- */
 public class Node {
 
 	public static void main(String[] args) throws IOException {
@@ -16,19 +17,18 @@ public class Node {
 		}
 		String name = args[0];
 
-		Util.debug("Starting %s...", name);
 		Node node = new Node(name);
 	}
 
-	private String name;
-	private DatagramSocket sender;
-	private DatagramSocket reciever;
+	private final String name;
+	private final DatagramSocket sender;
+	private final DatagramSocket reciever;
+	private Mark mark;
 
-	private Mark mark; // TODO
+	private final List<Packet> memory;
+	private final List<Double> co2;
 
-	private List<Double> co2;
-
-	Node(String name) {
+	private Node(String name) throws SocketException {
 
 		this.name = name;
 		InetSocketAddress addr = Config.getAddressFor(name);
@@ -38,17 +38,29 @@ public class Node {
 		}
 
 		long time = new EmulatedSystemClock().currentTimeMillis();
+
+		try {
+			double lossRate = Config.NETWORK_LOSS_RATE;
+			int averageDelay = Config.NETWORK_AVERAGE_DELAY;
+			sender = SimulatedDatagramSocket.client(lossRate, averageDelay);
+			reciever = SimulatedDatagramSocket.server(addr.getPort(), lossRate, averageDelay);
+		} catch (SocketException ex) {
+			Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
+			throw ex;
+		}
+
 		mark = new Mark(time);
+		memory = new LinkedList<>();
+		co2 = Util.readCO2();
 
-		Util.debug("Created new node <%s> with current time = %d", name, time);
-
+		Util.debug("Created new node [%s, %d, %d]", name, addr.getPort(), time);
 	}
 
-	public void onRecieve(Packet packet) {
+	private void onRecieve(Packet packet) {
 		mark.recieve(name, packet.getMark());
 	}
 
-	public void onComputeOrSend() {
+	private void onComputeOrSend() {
 		mark.computeOrSend(name);
 	}
 
