@@ -13,6 +13,9 @@ public class Config {
 	private static final int NUM_OF_NODES = 4;
 	private static final Map<String, InetSocketAddress> NODES;
 
+	public static final double NETWORK_LOSS_RATE = 0.2;
+	public static final int NETWORK_AVERAGE_DELAY = 1000;
+
 	static {
 		NODES = new HashMap<>();
 		for (int i = 0; i < NUM_OF_NODES; i++) {

@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -44,7 +45,7 @@ class SimulatedDatagramSocket extends DatagramSocket {
 
 			new Thread(() -> {
 				try {
-					Thread.sleep(delay);
+					TimeUnit.MILLISECONDS.sleep(delay);
 					SimulatedDatagramSocket.super.send(packet);
 				} catch (InterruptedException e) {
 					Thread.interrupted();
