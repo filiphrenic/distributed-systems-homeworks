@@ -1,7 +1,10 @@
 package hw2;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -24,8 +27,12 @@ public class Config {
 		return NUM_OF_NODES;
 	}
 
-	public static Map<String, InetSocketAddress> getNodes() {
-		return NODES;
+	public static Iterable<String> getNodeNames() {
+		return NODES.keySet();
+	}
+
+	public static InetSocketAddress getAddressFor(String nodeName) {
+		return NODES.get(nodeName);
 	}
 
 	public static Iterable<InetSocketAddress> getNodesFor(String nodeName) {

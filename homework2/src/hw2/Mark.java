@@ -7,13 +7,18 @@ import java.util.Map;
 /**
  * Created by fhrenic on 11/11/2016.
  */
-public class Mark implements Serializable, Comparable<Mark> {
+class Mark implements Serializable, Comparable<Mark> {
 
-	private long logic = 0;
-	private Map<String, Long> vector = new HashMap<>();
+	private long logic;
+	private final Map<String, Long> vector;
 
-	public void updateLogic() {
-		logic++;
+	Mark(){
+		this(0);
+	}
+
+	Mark(long logic){
+		this.logic = logic;
+		vector = new HashMap<>();
 	}
 
 	void recieve(String who, Mark m) {
@@ -25,8 +30,8 @@ public class Mark implements Serializable, Comparable<Mark> {
 	}
 
 	void computeOrSend(String who) {
-		logic++;
-		vector.compute(who, (k, v) -> (v == null) ? logic : v + 1);
+		++logic;
+		vector.compute(who, (k, v) -> (v == null) ? 1 : v + 1);
 	}
 
 
@@ -40,9 +45,9 @@ public class Mark implements Serializable, Comparable<Mark> {
 	 * Return:
 	 * -2 if this <  other
 	 * -1 if this <= other
-	 *  0 if   concurent
-	 *  1 if this >= other
-	 *  2 if this >  other
+	 * 0 if   concurent
+	 * 1 if this >= other
+	 * 2 if this >  other
 	 *
 	 * @param other other mark
 	 * @return comparison result
