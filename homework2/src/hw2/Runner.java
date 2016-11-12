@@ -16,7 +16,6 @@ public class Runner {
 	public static void main(String[] args) throws IOException {
 
 		List<Process> processes = new LinkedList<>();
-		Util.debug("Starting nodes...");
 
 		URL url = Runner.class.getClassLoader().getResource("");
 		if (url == null) { // won't happen
@@ -27,7 +26,13 @@ public class Runner {
 		String[] cmd = new String[]{"java", Node.class.getName(), "nodename"};
 		for (String nodename : Config.getNodeNames()) {
 			cmd[2] = nodename;
-			processes.add(new ProcessBuilder(cmd).directory(root).inheritIO().start());
+			processes.add(
+					new ProcessBuilder(cmd)
+							.directory(root)
+							.redirectOutput(ProcessBuilder.Redirect.INHERIT)
+							.redirectError(ProcessBuilder.Redirect.INHERIT)
+							.start()
+			);
 		}
 
 		loop();
