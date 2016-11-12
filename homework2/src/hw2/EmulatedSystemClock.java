@@ -1,13 +1,15 @@
 package hw2;
 
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * @author Aleksandar
  */
-public class EmulatedSystemClock {
+class EmulatedSystemClock {
 
 	private long startTime;
-	private double jitter; //jitter per second,  percentage of deviation per 1 second
+	private double jitter;
 
 	EmulatedSystemClock() {
 		startTime = System.currentTimeMillis();
@@ -15,7 +17,7 @@ public class EmulatedSystemClock {
 	}
 
 	long currentTimeMillis() {
-		long diff = System.currentTimeMillis() - startTime;
+		long diff = System.currentTimeMillis() - startTime; // positive
 		return startTime + Math.round(diff * Math.pow((1 + jitter), diff / 1000.0));
 	}
 }

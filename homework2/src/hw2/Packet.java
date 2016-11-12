@@ -14,8 +14,8 @@ public class Packet implements Serializable {
 	private Mark mark;
 	private Payload payload;
 
-	public static Packet create(Mark mark, double co2) {
-		return new Packet(mark, new Payload(co2));
+	public static Packet create(Mark mark, Payload p) {
+		return new Packet(mark, p);
 	}
 
 	public static Packet ack(Mark mark) {
@@ -55,6 +55,11 @@ public class Packet implements Serializable {
 		}
 
 		return null;
+	}
+
+	@Override
+	public String toString() {
+		return payload.toString();
 	}
 
 	public Mark getMark() {

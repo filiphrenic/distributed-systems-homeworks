@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
  */
 class Util {
 
-	static final Random RANDOM = new Random();
+	static final Random RANDOM = new Random(System.currentTimeMillis());
 	private static final String MEASUREMENTS_FILENAME = "mjerenja.csv";
 	private static final boolean DEBUG = true;
 

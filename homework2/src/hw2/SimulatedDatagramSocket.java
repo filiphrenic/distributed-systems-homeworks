@@ -17,14 +17,14 @@ class SimulatedDatagramSocket extends DatagramSocket {
 	private final double lossRate;
 	private final int averageDelay;
 
-	public static DatagramSocket client(double lossRate, int averageDelay)
+	static DatagramSocket client(double lossRate, int averageDelay)
 			throws SocketException {
-		return new SimulatedDatagramSocket(0, lossRate, averageDelay, 4 * averageDelay);
+		return new SimulatedDatagramSocket(0, lossRate, averageDelay, 0);
 	}
 
-	public static DatagramSocket server(int port, double lossRate, int averageDelay)
+	static DatagramSocket server(int port, double lossRate, int averageDelay)
 			throws SocketException {
-		return new SimulatedDatagramSocket(port, lossRate, averageDelay, 0);
+		return new SimulatedDatagramSocket(port, lossRate, averageDelay, 4 * averageDelay);
 	}
 
 	private SimulatedDatagramSocket(int port, double lossRate, int averageDelay, int soTimeout)
@@ -55,6 +55,8 @@ class SimulatedDatagramSocket extends DatagramSocket {
 			}
 			).start();
 
+		} else {
+			Util.debug("Dropped packet...");
 		}
 	}
 }

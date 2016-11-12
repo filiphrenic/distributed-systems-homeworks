@@ -8,13 +8,13 @@ import java.util.stream.Collectors;
 /**
  * Created by fhrenic on 11/11/2016.
  */
-public class Config {
+class Config {
 
 	private static final int NUM_OF_NODES = 4;
 	private static final Map<String, InetSocketAddress> NODES;
 
-	public static final double NETWORK_LOSS_RATE = 0.2;
-	public static final int NETWORK_AVERAGE_DELAY = 1000;
+	static final double NETWORK_LOSS_RATE = 0.2;
+	static final int NETWORK_AVERAGE_DELAY = 1000;
 
 	static {
 		NODES = new HashMap<>();
@@ -27,11 +27,11 @@ public class Config {
 		return NUM_OF_NODES;
 	}
 
-	public static Iterable<String> getNodeNames() {
+	static Iterable<String> getNodeNames() {
 		return NODES.keySet();
 	}
 
-	public static InetSocketAddress getAddressFor(String nodeName) {
+	static InetSocketAddress getAddressFor(String nodeName) {
 		return NODES.get(nodeName);
 	}
 

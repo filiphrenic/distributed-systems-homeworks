@@ -7,22 +7,22 @@ import java.util.Map;
 /**
  * Created by fhrenic on 11/11/2016.
  */
-class Mark implements Serializable, Comparable<Mark> {
+class Mark implements Serializable{
 
-	private long logic;
+	private long scalar;
 	private final Map<String, Long> vector;
 
 	Mark(){
 		this(0);
 	}
 
-	Mark(long logic){
-		this.logic = logic;
+	Mark(long scalar){
+		this.scalar = scalar;
 		vector = new HashMap<>();
 	}
 
 	void recieve(String who, Mark m) {
-		logic = Math.max(logic, m.logic) + 1;
+		scalar = Math.max(scalar, m.scalar) + 1;
 		m.vector.keySet().parallelStream().forEach(
 				_k -> vector.compute(_k, (k, v) -> Math.max(m.vector.get(_k), v == null ? 0 : v))
 		);
@@ -30,15 +30,13 @@ class Mark implements Serializable, Comparable<Mark> {
 	}
 
 	void computeOrSend(String who) {
-		++logic;
+		++scalar;
 		vector.compute(who, (k, v) -> (v == null) ? 1 : v + 1);
 	}
 
-
-	@Override
-	public int compareTo(Mark o) {
-		// compare them by logic time
-		return Long.compare(logic, o.logic);
+	public int compareScalar(Mark o) {
+		// compare them by scalar time
+		return Long.compare(scalar, o.scalar);
 	}
 
 	/**
@@ -84,8 +82,8 @@ class Mark implements Serializable, Comparable<Mark> {
 		}
 	}
 
-	public long getLogic() {
-		return logic;
+	public long getScalar() {
+		return scalar;
 	}
 
 	public Map<String, Long> getVector() {
