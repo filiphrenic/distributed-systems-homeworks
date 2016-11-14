@@ -3,58 +3,43 @@ package hw2;
 import java.io.*;
 import java.net.DatagramPacket;
 import java.net.SocketAddress;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
-/**
- * Created by fhrenic on 11/11/2016.
- */
-public class Packet implements Serializable {
 
+class Packet implements Serializable {
+
+	private long num;
 	private Mark mark;
 	private Payload payload;
 
-	public static Packet create(Mark mark, Payload p) {
-		return new Packet(mark, p);
+	static Packet create(long num, Mark mark, Payload p) {
+		return new Packet(num, mark, p);
 	}
 
-	public static Packet ack(Mark mark) {
-		return new Packet(mark, null);
+	static Packet ack(long num, Mark mark) {
+		return new Packet(num, mark, null);
 	}
 
-	private Packet(Mark mark, Payload payload) {
+	private Packet(long num, Mark mark, Payload payload) {
+		this.num = num;
 		this.mark = mark;
 		this.payload = payload;
 	}
 
-	public DatagramPacket toDatagram(SocketAddress sa) {
-
+	DatagramPacket toDatagram(SocketAddress sa) throws IOException {
 		try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		     ObjectOutput out = new ObjectOutputStream(bos)) {
 			out.writeObject(this);
 			byte[] arr = bos.toByteArray();
 
 			return new DatagramPacket(arr, arr.length, sa);
-
-		} catch (IOException e) {
-			Logger.getLogger(Packet.class.getName()).log(Level.SEVERE, null, e);
 		}
-
-		return null;
 	}
 
-
-	public static Packet fromDatagram(DatagramPacket dp) {
+	static Packet fromDatagram(DatagramPacket dp) throws IOException, ClassNotFoundException {
 		try (ByteArrayInputStream bis = new ByteArrayInputStream(dp.getData());
 		     ObjectInput in = new ObjectInputStream(bis)) {
-
 			return (Packet) in.readObject();
-
-		} catch (ClassNotFoundException | IOException e) {
-			Logger.getLogger(Packet.class.getName()).log(Level.SEVERE, null, e);
 		}
-
-		return null;
 	}
 
 	@Override
@@ -62,11 +47,15 @@ public class Packet implements Serializable {
 		return payload.toString();
 	}
 
-	public Mark getMark() {
+	long getNum() {
+		return num;
+	}
+
+	Mark getMark() {
 		return mark;
 	}
 
-	public Payload getPayload() {
+	Payload getPayload() {
 		return payload;
 	}
 
