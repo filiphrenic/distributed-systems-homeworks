@@ -6,28 +6,24 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
 
 /**
- * Created by fhrenic on 11/11/2016.
+ * Utility methods for all other classes
  */
 class Util {
 
 	static final Random RANDOM = new Random(System.currentTimeMillis());
 	private static final String MEASUREMENTS_FILENAME = "mjerenja.csv";
-	private static final boolean DEBUG = true;
+	private static final boolean DEBUG = false;
 
-	public static <T> Optional<T> chooseRandom(List<T> list) {
-		int n = list.size();
-		if (n == 0) {
-			return Optional.empty();
-		}
-		return Optional.of(list.get(RANDOM.nextInt(n)));
-	}
-
-	public static List<Double> readCO2() {
+	/**
+	 * Read CO2 measurements from file
+	 *
+	 * @return measurements
+	 */
+	static List<Double> readCO2() {
 		try (BufferedReader reader = new BufferedReader(
 				new InputStreamReader(
 						Util.class.getResourceAsStream("/" + MEASUREMENTS_FILENAME), StandardCharsets.UTF_8
@@ -112,6 +108,7 @@ class Util {
 	}
 
 	private Util() {
+		// singleton
 	}
 
 }

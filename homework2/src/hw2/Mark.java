@@ -4,6 +4,9 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Marks (clock) in distributed systems.
+ */
 class Mark implements Serializable {
 
 	private long scalar;

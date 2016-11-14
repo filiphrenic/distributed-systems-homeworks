@@ -6,11 +6,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Class that is responsible for configuration parameters.
+ */
 class Config {
 
 	private static final int NUM_OF_NODES = 4;
 	private static final Map<String, InetSocketAddress> NODES;
-	
+
 	static final double NETWORK_LOSS_RATE = 0.2;
 	static final int NETWORK_AVERAGE_DELAY = 1000;
 

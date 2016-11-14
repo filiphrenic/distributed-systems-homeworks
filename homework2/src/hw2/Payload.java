@@ -2,6 +2,9 @@ package hw2;
 
 import java.io.Serializable;
 
+/**
+ * Payload that is sent from nodes to nodes
+ */
 class Payload implements Serializable {
 
 	private double co2;

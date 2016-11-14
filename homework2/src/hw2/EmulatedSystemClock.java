@@ -1,9 +1,8 @@
 package hw2;
 
-
-import java.util.concurrent.TimeUnit;
-
 /**
+ * Emulated system clock, adds jitter to current system clock. Used for simulating different times.
+ *
  * @author Aleksandar
  */
 class EmulatedSystemClock {
