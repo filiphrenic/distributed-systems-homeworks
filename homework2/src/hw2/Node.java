@@ -38,7 +38,7 @@ public class Node {
 	private final DatagramSocket sender;
 	private final DatagramSocket receiver;
 	private final Iterable<SocketAddress> nodes;
-	private final Map<SocketAddress, Long> lastNum;
+	private final Map<SocketAddress, Long> lastAck;
 
 	private final Mark mark;
 	private final List<Packet> memory;
@@ -71,7 +71,7 @@ public class Node {
 		mark = new Mark(startTime, name);
 		nodes = Config.getNodesFor(name);
 		memory = Collections.synchronizedList(new LinkedList<>());
-		lastNum = Collections.synchronizedMap(new HashMap<>());
+		lastAck = Collections.synchronizedMap(new HashMap<>());
 		co2 = Util.readCO2();
 
 		Util.debug("Created new node [%s, %d, %d]", name, addr.getPort(), startTime);
@@ -103,7 +103,7 @@ public class Node {
 		// onSend to all nodes
 		for (SocketAddress sa : nodes) {
 			mark.onSend(name);
-			Packet packet = Packet.create(lastNum.getOrDefault(sa, 0L), mark, payload);
+			Packet packet = Packet.create(lastAck.getOrDefault(sa, -1L) + 1, mark, payload);
 			try {
 				sender.send(packet.toDatagram(sa));
 			} catch (IOException e) {
@@ -192,17 +192,19 @@ public class Node {
 				}
 				mark.onReceive(Node.this.name, other);
 
+				long packetNum = packet.getNum();
+
 				if (packet.getPayload() == null) {
 					// ack
-					// update last num
-					lastNum.compute(sa, (s, l) -> l == null ? 1 : l + 1);
+					// update last ack
+					Node.this.lastAck.compute(sa, (s, l) -> Math.max(packetNum, l == null ? 0 : l));
 				} else {
 					// data
-					// save packet and onSend ack
+					// save packet and send ack
 					memory.add(packet);
 					mark.onSend(Node.this.name);
 					try {
-						sender.send(Packet.ack(packet.getNum(), mark).toDatagram(dp.getSocketAddress()));
+						sender.send(Packet.ack(packetNum, mark).toDatagram(dp.getSocketAddress()));
 					} catch (IOException e) {
 						Util.except(e);
 					}
