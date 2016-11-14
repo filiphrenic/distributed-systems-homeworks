@@ -4,37 +4,31 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Created by fhrenic on 11/11/2016.
- */
-class Mark implements Serializable{
+class Mark implements Serializable {
 
 	private long scalar;
 	private final Map<String, Long> vector;
 
-	Mark(){
-		this(0);
-	}
-
-	Mark(long scalar){
-		this.scalar = scalar;
+	Mark(long scalar, String who) {
 		vector = new HashMap<>();
+		this.scalar = scalar;
+		vector.put(who, 0L);
 	}
 
-	void recieve(String who, Mark m) {
+	synchronized void onReceive(String who, Mark m) {
 		scalar = Math.max(scalar, m.scalar) + 1;
 		m.vector.keySet().parallelStream().forEach(
 				_k -> vector.compute(_k, (k, v) -> Math.max(m.vector.get(_k), v == null ? 0 : v))
 		);
-		vector.compute(who, (k, v) -> v + 1); // must exist
+		vector.compute(who, (k, v) -> v + 1); // will exist
 	}
 
-	void computeOrSend(String who) {
+	synchronized void onSend(String who) {
 		++scalar;
 		vector.compute(who, (k, v) -> (v == null) ? 1 : v + 1);
 	}
 
-	public int compareScalar(Mark o) {
+	int compareScalar(Mark o) {
 		// compare them by scalar time
 		return Long.compare(scalar, o.scalar);
 	}
@@ -51,9 +45,13 @@ class Mark implements Serializable{
 	 * @return comparison result
 	 */
 	public int compareVector(Mark other) {
-		int less = 0;
-		int same = 0;
-		int more = 0;
+
+		/*
+		 * comp[0] => number of elements in this vector that are less than the element in second vector
+		 * comp[1] => number of elements in this vector that are the same as an element in second vector
+		 * comp[2] => number of elements in this vector that are bigger than the element in second vector
+		 */
+		final int comp[] = new int[]{0, 0, 0};
 
 		for (String node : vector.keySet()) {
 			if (!other.vector.containsKey(node)) {
@@ -62,31 +60,18 @@ class Mark implements Serializable{
 			long v1 = this.vector.get(node);
 			long v2 = other.vector.get(node);
 
-			if (v1 < v2) {
-				less++;
-			} else if (v1 > v2) {
-				more++;
-			} else {
-				same++;
-			}
+			++comp[(int) Math.signum(Long.compare(v1, v2)) + 1];
 
-			if (less * more != 0) {
+			if (comp[0] * comp[2] != 0) {
 				return 0;
 			}
 		}
 
-		if (same == 0) {
-			return less > 0 ? -2 : 2;
+		if (comp[1] == 0) {
+			return comp[0] > 0 ? -2 : 2;
 		} else {
-			return less > 0 ? -1 : 1;
+			return comp[2] > 0 ? -1 : 1;
 		}
 	}
 
-	public long getScalar() {
-		return scalar;
-	}
-
-	public Map<String, Long> getVector() {
-		return vector;
-	}
 }
