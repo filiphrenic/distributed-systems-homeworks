@@ -36,7 +36,7 @@ class SimulatedDatagramSocket extends DatagramSocket {
 	}
 
 	@Override
-	public void send(DatagramPacket packet) throws IOException {
+	synchronized public void send(DatagramPacket packet) throws IOException {
 
 		if (Util.RANDOM.nextDouble() >= lossRate) {
 
