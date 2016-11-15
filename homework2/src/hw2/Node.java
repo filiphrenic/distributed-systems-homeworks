@@ -37,8 +37,11 @@ public class Node {
 
 	private final DatagramSocket sender;
 	private final DatagramSocket receiver;
-	private final Iterable<SocketAddress> nodes;
-	private final Map<SocketAddress, Long> lastAck;
+
+	private long lastPacketNum;
+	private final Map<Long, Payload> payloads;
+	private final Map<String, SocketAddress> nodes;
+	private final Map<String, Long> lastAck;
 
 	private final Mark mark;
 	private final List<Packet> memory;
@@ -69,6 +72,8 @@ public class Node {
 		}
 
 		mark = new Mark(startTime, name);
+		lastPacketNum = -1;
+		payloads = Collections.synchronizedMap(new HashMap<>());
 		nodes = Config.getNodesFor(name);
 		memory = Collections.synchronizedList(new LinkedList<>());
 		lastAck = Collections.synchronizedMap(new HashMap<>());
@@ -97,17 +102,24 @@ public class Node {
 	}
 
 	private void iteration() {
-		// create payload with current measurement
+		// create new payload with current measurement
 		Payload payload = new Payload(getMeasurement());
+		payloads.put(++lastPacketNum, payload);
 
 		// onSend to all nodes
-		for (SocketAddress sa : nodes) {
+		for (Map.Entry<String, SocketAddress> e : nodes.entrySet()) {
+
+			String nodename = e.getKey();
+			SocketAddress sa = e.getValue();
 			mark.onSend(name);
-			Packet packet = Packet.create(lastAck.getOrDefault(sa, -1L) + 1, mark, payload);
+			long num = lastAck.getOrDefault(nodename, -1L) + 1L;
+
+			Packet packet = Packet.create(num, mark, name, payloads.get(num));
+
 			try {
 				sender.send(packet.toDatagram(sa));
-			} catch (IOException e) {
-				Util.except(e);
+			} catch (IOException ex) {
+				Util.except(ex);
 			}
 		}
 	}
@@ -176,8 +188,6 @@ public class Node {
 					continue;
 				}
 
-				SocketAddress sa = dp.getSocketAddress();
-
 				Util.debug("Received packet on %s", Node.this.name);
 				try {
 					packet = Packet.fromDatagram(dp);
@@ -192,19 +202,25 @@ public class Node {
 				}
 				mark.onReceive(Node.this.name, other);
 
+				String from = packet.getFrom();
+				if (from == null || !nodes.containsKey(from)) {
+					Util.debug("Didnt find entry for %s", from);
+					continue;
+				}
+				SocketAddress sa = nodes.get(from);
 				long packetNum = packet.getNum();
 
 				if (packet.getPayload() == null) {
 					// ack
 					// update last ack
-					Node.this.lastAck.compute(sa, (s, l) -> Math.max(packetNum, l == null ? 0 : l));
+					Node.this.lastAck.compute(from, (s, l) -> Math.max(packetNum, l == null ? 0 : l));
 				} else {
 					// data
 					// save packet and send ack
 					memory.add(packet);
 					mark.onSend(Node.this.name);
 					try {
-						sender.send(Packet.ack(packetNum, mark).toDatagram(dp.getSocketAddress()));
+						sender.send(Packet.ack(packetNum, mark, name).toDatagram(sa));
 					} catch (IOException e) {
 						Util.except(e);
 					}

@@ -36,11 +36,10 @@ class Config {
 		return NODES.get(nodeName);
 	}
 
-	static Iterable<SocketAddress> getNodesFor(String nodeName) {
+	static Map<String, SocketAddress> getNodesFor(String nodeName) {
 		return NODES.entrySet().parallelStream()
 				.filter(e -> !e.getKey().equals(nodeName))
-				.map(Map.Entry::getValue)
-				.collect(Collectors.toList());
+				.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 	}
 
 }

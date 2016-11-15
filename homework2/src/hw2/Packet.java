@@ -12,19 +12,21 @@ class Packet implements Serializable {
 
 	private long num;
 	private Mark mark;
+	private String from;
 	private Payload payload;
 
-	static Packet create(long num, Mark mark, Payload p) {
-		return new Packet(num, mark, p);
+	static Packet create(long num, Mark mark, String from, Payload p) {
+		return new Packet(num, mark, from, p);
 	}
 
-	static Packet ack(long num, Mark mark) {
-		return new Packet(num, mark, null);
+	static Packet ack(long num, Mark mark, String from) {
+		return new Packet(num, mark, from, null);
 	}
 
-	private Packet(long num, Mark mark, Payload payload) {
+	private Packet(long num, Mark mark, String from, Payload payload) {
 		this.num = num;
 		this.mark = mark;
+		this.from = from;
 		this.payload = payload;
 	}
 
@@ -71,6 +73,10 @@ class Packet implements Serializable {
 
 	Mark getMark() {
 		return mark;
+	}
+
+	public String getFrom() {
+		return from;
 	}
 
 	Payload getPayload() {
