@@ -32,22 +32,24 @@ public class Node {
 
 	}
 
+	private final EmulatedSystemClock esc;
+
 	private final String name;
 	private final long startTime;
 
 	private final DatagramSocket sender;
 	private final DatagramSocket receiver;
-
-	private long lastPacketNum;
-	private final Map<Long, Payload> payloads;
 	private final Map<String, SocketAddress> nodes;
-	private final Map<String, Long> lastAck;
 
 	private final Mark mark;
-	private final List<Packet> memory;
+	private int lastPacketNum; // last packet sent
+
+	private final Map<Integer, Packet> packets;
+	private final Map<String, BitSet> acks; // indexes which packet has been acked
+
+	private final Map<Integer, Packet> memory;
 	private final List<Double> co2;
 
-	private final EmulatedSystemClock esc;
 
 	private Node(String name) throws SocketException, IllegalArgumentException {
 
@@ -71,12 +73,14 @@ public class Node {
 			throw ex;
 		}
 
-		mark = new Mark(startTime, name);
 		lastPacketNum = -1;
-		payloads = Collections.synchronizedMap(new HashMap<>());
+		mark = new Mark(startTime, name);
+
 		nodes = Config.getNodesFor(name);
-		memory = Collections.synchronizedList(new LinkedList<>());
-		lastAck = Collections.synchronizedMap(new HashMap<>());
+		acks = Collections.synchronizedMap(new HashMap<>());
+		packets = Collections.synchronizedMap(new HashMap<>());
+
+		memory = Collections.synchronizedMap(new HashMap<>());
 		co2 = Util.readCO2();
 
 		Util.debug("Created new node [%s, %d, %d]", name, addr.getPort(), startTime);
@@ -103,31 +107,44 @@ public class Node {
 
 	private void iteration() {
 		// create new payload with current measurement
-		Payload payload = new Payload(getMeasurement());
-		payloads.put(++lastPacketNum, payload);
+		packNew();
 
-		// onSend to all nodes
 		for (Map.Entry<String, SocketAddress> e : nodes.entrySet()) {
+			// send to given node
 
 			String nodename = e.getKey();
 			SocketAddress sa = e.getValue();
-			mark.onSend(name);
-			long num = lastAck.getOrDefault(nodename, -1L) + 1L;
 
-			Packet packet = Packet.create(num, mark, name, payloads.get(num));
-
-			try {
-				sender.send(packet.toDatagram(sa));
-			} catch (IOException ex) {
-				Util.except(ex);
+			BitSet bs = acks.getOrDefault(nodename, new BitSet());
+			int xy = 0;
+			for (int idx = bs.nextClearBit(0); idx <= lastPacketNum; idx = bs.nextClearBit(idx + 1)) {
+				try {
+					sender.send(packets.get(idx).toDatagram(sa));
+				} catch (IOException ex) {
+					Util.except(ex);
+				}
+				xy++;
 			}
+			Util.debug("%s sent %d packets to %s%n", name, xy, nodename);
 		}
 	}
+
+	/**
+	 * Create new packet that will be sent
+	 */
+	private void packNew() {
+		++lastPacketNum;
+		mark.onSend(name);
+		Payload payload = new Payload(getMeasurement());
+		Packet packet = Packet.create(lastPacketNum, mark, name, payload);
+		packets.put(lastPacketNum, packet);
+	}
+
 
 	private void output() {
 		List<Packet> packets;
 		synchronized (this) {
-			packets = new LinkedList<>(memory);
+			packets = new LinkedList<>(memory.values());
 			memory.clear();
 		}
 
@@ -178,17 +195,17 @@ public class Node {
 			while (true) {
 
 				try {
-					Node.this.receiver.receive(dp);
+					receiver.receive(dp);
 				} catch (SocketTimeoutException e) {
 					Util.except(e);
-					System.err.println("Receive timeout on " + Node.this.name);
+					System.err.println("Receive timeout on " + name);
 					continue;
 				} catch (IOException e) {
 					Util.except(e);
 					continue;
 				}
 
-				Util.debug("Received packet on %s", Node.this.name);
+				Util.debug("Received packet on %s", name);
 				try {
 					packet = Packet.fromDatagram(dp);
 				} catch (IOException | ClassNotFoundException e) {
@@ -196,11 +213,9 @@ public class Node {
 					continue;
 				}
 
+				// update marks
 				Mark other = packet.getMark();
-				if (other == null) {
-					continue;
-				}
-				mark.onReceive(Node.this.name, other);
+				mark.onReceive(name, other);
 
 				String from = packet.getFrom();
 				if (from == null || !nodes.containsKey(from)) {
@@ -208,17 +223,18 @@ public class Node {
 					continue;
 				}
 				SocketAddress sa = nodes.get(from);
-				long packetNum = packet.getNum();
+				int packetNum = packet.getNum();
 
 				if (packet.getPayload() == null) {
 					// ack
-					// update last ack
-					Node.this.lastAck.compute(from, (s, l) -> Math.max(packetNum, l == null ? 0 : l));
+					// update ack bitmask
+					acks.putIfAbsent(from, new BitSet());
+					acks.get(from).set(packetNum);
 				} else {
 					// data
 					// save packet and send ack
-					memory.add(packet);
-					mark.onSend(Node.this.name);
+					memory.putIfAbsent(packetNum, packet);
+					mark.onSend(name);
 					try {
 						sender.send(Packet.ack(packetNum, mark, name).toDatagram(sa));
 					} catch (IOException e) {

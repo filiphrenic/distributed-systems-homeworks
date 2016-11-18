@@ -10,20 +10,20 @@ import java.net.SocketAddress;
  */
 class Packet implements Serializable {
 
-	private long num;
+	private int num;
 	private Mark mark;
 	private String from;
 	private Payload payload;
 
-	static Packet create(long num, Mark mark, String from, Payload p) {
+	static Packet create(int num, Mark mark, String from, Payload p) {
 		return new Packet(num, mark, from, p);
 	}
 
-	static Packet ack(long num, Mark mark, String from) {
+	static Packet ack(int num, Mark mark, String from) {
 		return new Packet(num, mark, from, null);
 	}
 
-	private Packet(long num, Mark mark, String from, Payload payload) {
+	private Packet(int num, Mark mark, String from, Payload payload) {
 		this.num = num;
 		this.mark = mark;
 		this.from = from;
@@ -67,7 +67,7 @@ class Packet implements Serializable {
 		return payload.toString();
 	}
 
-	long getNum() {
+	int getNum() {
 		return num;
 	}
 
