@@ -70,11 +70,20 @@ class Mark implements Serializable {
 			}
 		}
 
-		if (comp[1] == 0) {
-			return comp[0] > 0 ? -2 : 2;
-		} else {
-			return comp[2] > 0 ? -1 : 1;
+		if (comp[0] * comp[2] > 0) {
+			return 0;
 		}
+
+		int ret = comp[1] > 0 ? 1 : 2;
+
+		if (comp[0] > 0) {
+			return -ret;
+		} else if (comp[0] > 0) {
+			return ret;
+		} else {
+			return 0;
+		}
+
 	}
 
 }
