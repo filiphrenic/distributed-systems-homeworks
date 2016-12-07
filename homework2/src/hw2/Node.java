@@ -143,10 +143,7 @@ public class Node {
 
 	private void output() {
 		List<Packet> packets;
-		synchronized (this) {
-			packets = new LinkedList<>(memory.values());
-			memory.clear();
-		}
+		packets = new LinkedList<>(memory.values());
 
 		String scalarSort = sortPackets(
 				packets, (p1, p2) -> p1.getMark().compareScalar(p2.getMark())
@@ -170,7 +167,7 @@ public class Node {
 	}
 
 	private String sortPackets(List<Packet> memory, Comparator<Packet> comp) {
-		Collections.sort(memory, comp);
+		memory.sort(comp);
 		return memory.stream()
 				.map(p -> p.getPayload().toString())
 				.collect(Collectors.joining(",", "[", "]"));
