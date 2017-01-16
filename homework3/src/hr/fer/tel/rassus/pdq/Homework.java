@@ -1,5 +1,7 @@
 package hr.fer.tel.rassus.pdq;
+
 import com.perfdynamics.pdq.*;
+
 import java.util.StringJoiner;
 
 /**
@@ -28,7 +30,6 @@ public class Homework {
 		final boolean totalTimeOnly = true;
 		final String numFmt = "%.6f";
 		final double fd = 1.0 / (1.0 - f * d);
-
 		final double[] v = new double[S.length];
 		v[0] = 1.0;
 		v[1] = fd;
